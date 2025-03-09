@@ -1,8 +1,9 @@
 local player = game.Players.LocalPlayer
 
+-- Crear la GUI
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "PlayerListGui"
-screenGui.ResetOnSpawn =  false
+screenGui.ResetOnSpawn = false
 screenGui.Parent = player:WaitForChild("PlayerGui")
 
 local scrollingFrame = Instance.new("ScrollingFrame")
@@ -16,9 +17,11 @@ local listLayout = Instance.new("UIListLayout")
 listLayout.SortOrder = Enum.SortOrder.LayoutOrder
 listLayout.Parent = scrollingFrame
 
+-- Variables para el teletransporte
 local targetPlayerName = ""
 local teleporting = false
 
+-- Función para crear un botón de jugador
 local function createPlayerButton(playerName)
     local player = game.Players:FindFirstChild(playerName)
     if not player then return end
@@ -27,20 +30,22 @@ local function createPlayerButton(playerName)
     button.Text = playerName
     button.Size = UDim2.new(1, 0, 0, 30)
     button.BackgroundTransparency = 0.5
-    button.TextColor3 = Color3.new(0, 0, 0)
+    button.TextColor3 = Color3.new(1, 1, 1) -- Cambiar el color del texto a blanco para mejor contraste
     button.LayoutOrder = #scrollingFrame:GetChildren()
     button.Parent = scrollingFrame
     
+    -- Función para actualizar el color del botón según el equipo del jugador
     local function updateButtonColor()
         if player.Team then
             button.BackgroundColor3 = player.Team.TeamColor.Color
         else
-            button.BackgroundColor3 = Color3.new(1, 1, 1)
+            button.BackgroundColor3 = Color3.new(0.2, 0.2, 0.2) -- Color gris oscuro por defecto
         end
     end
     
     updateButtonColor()
     
+    -- Conectar la actualización del color al evento Heartbeat
     local heartbeatConnection
     heartbeatConnection = game:GetService("RunService").Heartbeat:Connect(function()
         updateButtonColor()
@@ -49,6 +54,7 @@ local function createPlayerButton(playerName)
         end
     end)
 
+    -- Función para seleccionar el botón
     local function selectButton()
         targetPlayerName = playerName
         for _, child in ipairs(scrollingFrame:GetChildren()) do
@@ -56,11 +62,7 @@ local function createPlayerButton(playerName)
                 if child == button then
                     child.BackgroundColor3 = Color3.new(0, 1, 0) -- Cambiar a verde
                 else
-                    if player.Team then
-                        child.BackgroundColor3 = player.Team.TeamColor.Color
-                    else
-                        child.BackgroundColor3 = Color3.new(1, 1, 1)
-                    end
+                    updateButtonColor()
                 end
             end
         end
@@ -69,6 +71,7 @@ local function createPlayerButton(playerName)
     button.MouseButton1Click:Connect(selectButton)
 end
 
+-- Función para actualizar los botones de los jugadores
 local function updatePlayerButtons()
     for _, child in ipairs(scrollingFrame:GetChildren()) do
         if child:IsA("TextButton") then
@@ -80,12 +83,14 @@ local function updatePlayerButtons()
     end
 end
 
+-- Conectar eventos de jugadores añadidos y eliminados
 game.Players.PlayerAdded:Connect(function(player)
     createPlayerButton(player.Name)
 end)
 
 game.Players.PlayerRemoving:Connect(updatePlayerButtons)
 
+-- Conectar el teletransporte al evento Stepped
 game:GetService("RunService").Stepped:Connect(function()
     if teleporting and targetPlayerName ~= "" then
         local targetPlayer = game.Players:FindFirstChild(targetPlayerName)
@@ -109,16 +114,19 @@ game:GetService("RunService").Stepped:Connect(function()
     end
 end)
 
-game.Players.LocalPlayer:GetMouse().KeyDown:Connect(function(key)
+-- Conectar eventos de teclado para activar/desactivar el teletransporte
+local mouse = game.Players.LocalPlayer:GetMouse()
+
+mouse.KeyDown:Connect(function(key)
     if key == "e" then
         teleporting = true
     end
 end)
 
-game.Players.LocalPlayer:GetMouse().KeyUp:Connect(function(key)
+mouse.KeyUp:Connect(function(key)
     if key == "e" then
         teleporting = false
-        local button = screenGui:FindFirstChild("PlayerListGui"):FindFirstChild("ScrollingFrame"):FindFirstChild(targetPlayerName)
+        local button = scrollingFrame:FindFirstChild(targetPlayerName)
         if button then
             local targetPlayer = game.Players:FindFirstChild(targetPlayerName)
             if targetPlayer then
@@ -127,11 +135,12 @@ game.Players.LocalPlayer:GetMouse().KeyUp:Connect(function(key)
                 if targetPlayer.Team then
                     button.BackgroundColor3 = targetPlayer.Team.TeamColor.Color
                 else
-                    button.BackgroundColor3 = Color3.new(1, 1, 1)
+                    button.BackgroundColor3 = Color3.new(0.2, 0.2, 0.2) -- Color gris oscuro por defecto
                 end
             end
         end
     end
 end)
 
+-- Inicializar la lista de jugadores
 updatePlayerButtons()
