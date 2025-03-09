@@ -1,0 +1,137 @@
+local player = game.Players.LocalPlayer
+
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "PlayerListGui"
+screenGui.ResetOnSpawn =  false
+screenGui.Parent = player:WaitForChild("PlayerGui")
+
+local scrollingFrame = Instance.new("ScrollingFrame")
+scrollingFrame.Size = UDim2.new(0.2, 0, 0.5, 0)
+scrollingFrame.Position = UDim2.new(0.8, 0, 0.25, 0)
+scrollingFrame.BackgroundColor3 = Color3.new(0, 0, 0)
+scrollingFrame.BorderSizePixel = 2
+scrollingFrame.Parent = screenGui
+
+local listLayout = Instance.new("UIListLayout")
+listLayout.SortOrder = Enum.SortOrder.LayoutOrder
+listLayout.Parent = scrollingFrame
+
+local targetPlayerName = ""
+local teleporting = false
+
+local function createPlayerButton(playerName)
+    local player = game.Players:FindFirstChild(playerName)
+    if not player then return end
+
+    local button = Instance.new("TextButton")
+    button.Text = playerName
+    button.Size = UDim2.new(1, 0, 0, 30)
+    button.BackgroundTransparency = 0.5
+    button.TextColor3 = Color3.new(0, 0, 0)
+    button.LayoutOrder = #scrollingFrame:GetChildren()
+    button.Parent = scrollingFrame
+    
+    local function updateButtonColor()
+        if player.Team then
+            button.BackgroundColor3 = player.Team.TeamColor.Color
+        else
+            button.BackgroundColor3 = Color3.new(1, 1, 1)
+        end
+    end
+    
+    updateButtonColor()
+    
+    local heartbeatConnection
+    heartbeatConnection = game:GetService("RunService").Heartbeat:Connect(function()
+        updateButtonColor()
+        if not player:IsDescendantOf(game) then
+            heartbeatConnection:Disconnect()
+        end
+    end)
+
+    local function selectButton()
+        targetPlayerName = playerName
+        for _, child in ipairs(scrollingFrame:GetChildren()) do
+            if child:IsA("TextButton") then
+                if child == button then
+                    child.BackgroundColor3 = Color3.new(0, 1, 0) -- Cambiar a verde
+                else
+                    if player.Team then
+                        child.BackgroundColor3 = player.Team.TeamColor.Color
+                    else
+                        child.BackgroundColor3 = Color3.new(1, 1, 1)
+                    end
+                end
+            end
+        end
+    end
+
+    button.MouseButton1Click:Connect(selectButton)
+end
+
+local function updatePlayerButtons()
+    for _, child in ipairs(scrollingFrame:GetChildren()) do
+        if child:IsA("TextButton") then
+            child:Destroy()
+        end
+    end
+    for _, player in pairs(game.Players:GetPlayers()) do
+        createPlayerButton(player.Name)
+    end
+end
+
+game.Players.PlayerAdded:Connect(function(player)
+    createPlayerButton(player.Name)
+end)
+
+game.Players.PlayerRemoving:Connect(updatePlayerButtons)
+
+game:GetService("RunService").Stepped:Connect(function()
+    if teleporting and targetPlayerName ~= "" then
+        local targetPlayer = game.Players:FindFirstChild(targetPlayerName)
+
+        if targetPlayer then
+            local localPlayer = game.Players.LocalPlayer
+            local localCharacter = localPlayer.Character
+            local targetCharacter = targetPlayer.Character
+
+            if localCharacter and targetCharacter then
+                local localRootPart = localCharacter:WaitForChild("HumanoidRootPart")
+                local targetRootPart = targetCharacter:WaitForChild("HumanoidRootPart")
+
+                localRootPart.CFrame = targetRootPart.CFrame
+            else
+                warn("El jugador local o el jugador objetivo no tienen Character o HumanoidRootPart.")
+            end
+        else
+            warn("No se encontró al jugador con el nombre especificado.")
+        end
+    end
+end)
+
+game.Players.LocalPlayer:GetMouse().KeyDown:Connect(function(key)
+    if key == "e" then
+        teleporting = true
+    end
+end)
+
+game.Players.LocalPlayer:GetMouse().KeyUp:Connect(function(key)
+    if key == "e" then
+        teleporting = false
+        local button = screenGui:FindFirstChild("PlayerListGui"):FindFirstChild("ScrollingFrame"):FindFirstChild(targetPlayerName)
+        if button then
+            local targetPlayer = game.Players:FindFirstChild(targetPlayerName)
+            if targetPlayer then
+                button.BackgroundColor3 = Color3.new(0, 1, 0) -- Cambiar a verde
+            else
+                if targetPlayer.Team then
+                    button.BackgroundColor3 = targetPlayer.Team.TeamColor.Color
+                else
+                    button.BackgroundColor3 = Color3.new(1, 1, 1)
+                end
+            end
+        end
+    end
+end)
+
+updatePlayerButtons()
